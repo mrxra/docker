@@ -183,9 +183,9 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 
 ENV NEXTCLOUD_VERSION 9.0.50
 ENV NEXTCLOUD_HOME /var/www/html/nextcloud 
-ENV NEXTCLOUD_DATA /data
+ENV NEXTCLOUD_DATA /nextcloud
 
-RUN mkdir -p $NEXTCLOUD_HOME \
+RUN mkdir $NEXTCLOUD_DATA && mkdir -p $NEXTCLOUD_HOME \
 	&&	curl -fSL "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2" \
 		| tar -xjC $NEXTCLOUD_HOME --strip-components 1 -f -
 
@@ -197,6 +197,7 @@ RUN chown -R www-data:www-data $NEXTCLOUD_HOME \
 	&& ln -sf ${NEXTCLOUD_DATA}/data ${NEXTCLOUD_HOME}/data
 
 WORKDIR ${NEXTCLOUD_HOME}
+
 VOLUME ${NEXTCLOUD_DATA}
 
 EXPOSE 80
