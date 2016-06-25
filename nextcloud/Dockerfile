@@ -14,13 +14,9 @@ RUN rm -rf /var/www/html \
 	&& mkdir -p /var/lock/apache2 /var/run/apache2 /var/log/apache2 /var/www/html \
 	&& chown -R www-data:www-data /var/lock/apache2 /var/run/apache2 /var/log/apache2 /var/www/html
 
-#RUN   mv /etc/apache2/apache2.conf /etc/apache2/apache2.conf.dist \
-#	&& rm /etc/apache2/conf-enabled/* /etc/apache2/sites-enabled/*
-
 # ...checked during php compilation
 RUN mv /etc/apache2/apache2.conf /etc/apache2/apache2.conf.orig
 COPY apache2.conf /etc/apache2/apache2.conf
-
 
 # ========== php
 # sample dockerfile compiling php from source...
@@ -79,10 +75,10 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& make -j"$(nproc)" && make install && make clean
 
 # ========== nextcloud
-# http://php.net/manual/en/install.pecl.phpize.php#install.pecl.phpize
+# install required/recommended php modules and their respective dependencies
 # https://doc.owncloud.org/server/9.0/admin_manual/installation/source_installation.html#prerequisites
-
-# list of extensions...
+# http://php.net/manual/en/install.pecl.phpize.php#install.pecl.phpize
+# list extensions...
 # find /usr/local/src/php/ext -mindepth 2 -maxdepth 2 -type f -name 'config.m4' | cut -d/ -f6 | sort
 ENV PHP_EXT "$PHP_SRC/ext/"
 
@@ -185,16 +181,19 @@ ENV NEXTCLOUD_VERSION 9.0.50
 ENV NEXTCLOUD_HOME /var/www/html/nextcloud 
 ENV NEXTCLOUD_DATA /nextcloud
 
-RUN mkdir $NEXTCLOUD_DATA && mkdir -p $NEXTCLOUD_HOME \
+RUN mkdir -p ${NEXTCLOUD_HOME} \
 	&&	curl -fSL "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2" \
 		| tar -xjC $NEXTCLOUD_HOME --strip-components 1 -f -
 
-#COPY config.php $NEXTCLOUD_HOME/config/config.php
-RUN chown -R www-data:www-data $NEXTCLOUD_HOME \
-	&& rm -rf ${NEXTCLOUD_HOME}/config \
-	&& ln -sf ${NEXTCLOUD_DATA}/config ${NEXTCLOUD_HOME}/config \
+RUN   mkdir -p ${NEXTCLOUD_DATA}/config \ 
+	&& mkdir -p ${NEXTCLOUD_DATA}/data \
+	&& rm -rf ${NEXTCLOUD_HOME}/config \ 
 	&& rm -rf ${NEXTCLOUD_HOME}/data \
-	&& ln -sf ${NEXTCLOUD_DATA}/data ${NEXTCLOUD_HOME}/data
+	&& ln -sf ${NEXTCLOUD_DATA}/config ${NEXTCLOUD_HOME}/config \
+	&& ln -sf ${NEXTCLOUD_DATA}/data ${NEXTCLOUD_HOME}/data \
+	&& chown -R www-data:www-data ${NEXTCLOUD_HOME} ${NEXTCLOUD_DATA}
+
+
 
 WORKDIR ${NEXTCLOUD_HOME}
 
