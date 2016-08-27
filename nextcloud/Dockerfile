@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch
 MAINTAINER mrxra
 
 
@@ -17,6 +17,12 @@ RUN rm -rf /var/www/html \
 # ...checked during php compilation
 RUN mv /etc/apache2/apache2.conf /etc/apache2/apache2.conf.orig
 COPY apache2.conf /etc/apache2/apache2.conf
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+		python-certbot-apache \
+	&& rm -rf /var/lib/apt/lists/*
+#	&& certbot --apache
+
 
 # ========== php
 # sample dockerfile compiling php from source...
@@ -38,7 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -r /var/lib/apt/lists/*
 
 
-ENV PHP_VERSION 7.0.7
+ENV PHP_VERSION 7.0.10
 
 ENV PREFIX /usr/local
 ENV PHP_CFG $PREFIX/etc/php
@@ -85,21 +91,19 @@ ENV PHP_EXT "$PHP_SRC/ext/"
 # --- module gd
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		libjpeg-dev \
-		libpng12-dev \
+		libpng-dev \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& cd $PHP_EXT/gd \
 	&& phpize \
-	&& ./configure --with-png-dir=/usr --with-jpeg-dir=/usr \
+	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=gd.so" > "$PHP_CFG/conf.d/gd.ini"
-
 # --- module exif
 RUN cd $PHP_EXT/exif \
 	&& phpize \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=exif.so" > "$PHP_CFG/conf.d/exif.ini"
-
 # --- module zip
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		libzip-dev \
@@ -109,7 +113,6 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=zip.so" > "$PHP_CFG/conf.d/zip.ini"
-
 # --- module bz2
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		libbz2-dev \
@@ -119,35 +122,30 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=bz2.so" > "$PHP_CFG/conf.d/bz2.ini"
-
 # --- module pdo_mysql
 RUN cd $PHP_EXT/pdo_mysql \
 	&& phpize \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=pdo_mysql.so" > "$PHP_CFG/conf.d/pdo_mysql.ini"
-
 # --- module fileinfo
 RUN cd $PHP_EXT/fileinfo \
 	&& phpize \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=fileinfo.so" > "$PHP_CFG/conf.d/fileinfo.ini"
-
 # --- module opcache
 RUN cd $PHP_EXT/opcache \
 	&& phpize \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "zend_extension=opcache.so" > "$PHP_CFG/conf.d/opcache.ini"
-
 # --- module pcntl
 RUN cd $PHP_EXT/pcntl \
 	&& phpize \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=pcntl.so" > "$PHP_CFG/conf.d/pcntl.ini"
-
 # --- module libmcrypt-dev
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		libmcrypt-dev \
@@ -157,7 +155,6 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=mcrypt.so" > "$PHP_CFG/conf.d/mcrypt.ini"
-
 # --- module intl
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		libicu-dev \
@@ -167,7 +164,6 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& ./configure \
 	&& make -j"$(nproc)" && make install && make clean \
 	&& echo "extension=intl.so" > "$PHP_CFG/conf.d/intl.ini"
-
 # --- module imagick
 RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 		imagemagick \
@@ -177,28 +173,21 @@ RUN set -xe && apt-get update && apt-get install -y --no-install-recommends \
 	&& echo "extension=imagick.so" > "$PHP_CFG/conf.d/imagick.ini"
 
 
-ENV NEXTCLOUD_VERSION 9.0.50
-ENV NEXTCLOUD_HOME /var/www/html/nextcloud 
-ENV NEXTCLOUD_DATA /nextcloud
+ENV NC_VERSION 9.0.53
+ENV NC_HOME /var/www/html/nextcloud 
+ENV NC_DATA /nextcloud
 
-RUN mkdir -p ${NEXTCLOUD_HOME} \
-	&&	curl -fSL "https://download.nextcloud.com/server/releases/nextcloud-${NEXTCLOUD_VERSION}.tar.bz2" \
-		| tar -xjC $NEXTCLOUD_HOME --strip-components 1 -f -
-
-RUN   mkdir -p ${NEXTCLOUD_DATA}/config \ 
-	&& mkdir -p ${NEXTCLOUD_DATA}/data \
-	&& rm -rf ${NEXTCLOUD_HOME}/config \ 
-	&& rm -rf ${NEXTCLOUD_HOME}/data \
-	&& ln -sf ${NEXTCLOUD_DATA}/config ${NEXTCLOUD_HOME}/config \
-	&& ln -sf ${NEXTCLOUD_DATA}/data ${NEXTCLOUD_HOME}/data \
-	&& chown -R www-data:www-data ${NEXTCLOUD_HOME} ${NEXTCLOUD_DATA}
+RUN mkdir -p ${NC_HOME} \
+	&&	curl -fSL "https://download.nextcloud.com/server/releases/nextcloud-${NC_VERSION}.tar.bz2" \
+		| tar -xjC ${NC_HOME} --strip-components 1 -f - \
+    # linking config and data directories to volume
+    && mkdir -p ${NC_DATA}/config && rm -rf ${NC_HOME}/config && ln -sf ${NC_DATA}/config ${NC_HOME}/config \
+	&& mkdir -p ${NC_DATA}/data && rm -rf ${NC_HOME}/data && ln -sf ${NC_DATA}/data ${NC_HOME}/data \
+	&& chown -R www-data:www-data ${NC_HOME} ${NC_DATA}
 
 
-
-WORKDIR ${NEXTCLOUD_HOME}
-
-VOLUME ${NEXTCLOUD_DATA}
-
+WORKDIR ${NC_HOME}
+VOLUME ${NC_DATA}
 EXPOSE 80
 
 # remove any left over pid files...otherwise container might not startup...
