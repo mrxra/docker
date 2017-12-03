@@ -46,4 +46,4 @@ ENV OCR_DATA /opt/pdfocr
 
 VOLUME ${OCR_DATA}
 
-CMD ["/opt/tesseract.sh"]
+CMD ["/opt/tesseract.sh", $OCR_DATA ]
